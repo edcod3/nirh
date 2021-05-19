@@ -2,10 +2,6 @@ import argparse
 import patoolib
 import tempfile
 import os
-import logging
-
-# Remove patoollib logging
-logging.getLogger("patoolib").setLevel(logging.WARNING)
 
 """
 -- nihr (needle in a rar-haystack) --
@@ -27,14 +23,6 @@ to find the secret messages.
 
 
 class Args:
-    def __init__(self, **kwargs):
-        self.__dict__.update(kwargs)
-
-    def getURL(self):
-        if "://" not in self.url:
-            return "http://" + self.url
-        else:
-            return self.url
     pass
 
 
@@ -45,15 +33,17 @@ def getArgs():
                         help="search string (needle)")
     parser.add_argument(
         'dir', type=str, help="target directory (haystack)")
-    parser.add_argument('-o', metavar="filename", type=str,
+    parser.add_argument('-o',"--outfile", metavar="filename", type=str,
                         help="Output found string(s) and asssociated file(s) to file")
-    # parser.print_help()
+    parser.add_argument("-v", "--verbose", help="verbose output of extraction process",
+                    action="store_true")
+    #parser.print_help()
     args = Args()
     parser.parse_args(namespace=args)
-    if (args.o != None):
-        return (args.string, args.dir + "/", args.o + ".txt")
+    if (args.outfile != None):
+        return (args.string, args.dir + "/", args.outfile + ".txt", bool(args.verbose))
     else:
-        return (args.string, args.dir + "/", False)
+        return (args.string, args.dir + "/", False, bool(args.verbose))
 
 # Info/Error Messages
 
@@ -120,35 +110,40 @@ def SearchDir(dir, file_dir, search, outfile, count):
     return count
 
 
-def riterator(search_dir, tmp_dir, search_str, outputfile=False):
-    count = 0
+def riterator(search_dir, tmp_dir, search_str, verbose, outputfile=False):
+    find_count = 0
+    file_count = 1
     if os.name == "nt":
         temp_file_dir = tmp_dir + "\\"
     else:
         temp_file_dir = tmp_dir + "/"
     for file in os.listdir(search_dir):
+        if verbose:
+            printInfo(f"Extracting rar archive {file_count}/{len(os.listdir(search_dir))}")
+            print()
+        file_count = file_count + 1
         file_path = search_dir + file
         if not file.endswith(".rar"):
             continue
         doExtract(file_path, tmp_dir)
-        new_count = SearchDir(tmp_dir, temp_file_dir,
-                              search_str, outputfile, count)
-        count = new_count
-    return count
+        new_find_count = SearchDir(tmp_dir, temp_file_dir,
+                              search_str, outputfile, find_count)
+        find_count = new_find_count
+    return find_count
 
 
 def main():
-    (string, dir, outfile) = getArgs()
+    (string, dir, outfile, verbose) = getArgs()
     (tmpdir_class, temp_path) = createTmpDir()
-    iterated = riterator(dir, temp_path, string, outfile)
+    iterated = riterator(dir, temp_path, string, verbose, outfile)
     print()
     count_msg = f"Found {iterated} occurences of {string}!"
-    writeFind(count_msg, outfile)
+    if outfile != False:
+        writeFind(count_msg, outfile)
     printInfo(count_msg)
     print()
     printInfo("Thanks for using nirh! \nExiting...")
     print()
-
     tmpdir_class.cleanup()
     exit()
 
