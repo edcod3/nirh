@@ -83,6 +83,7 @@ def doExtract(rar_location, temp_dir, verbose):
     except patoolib.util.PatoolError as err:
         printError("Couldn't extract rar archive...")
         print(err)
+        writeFind(err, "error.log")
         return False
 
 
