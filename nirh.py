@@ -59,9 +59,10 @@ def printError(msg):
 ## Unpacking the tar file ##
 
 
-def createTmpDir():
+def createTmpDir(verbose):
     temp_dir = tempfile.TemporaryDirectory()
-    #print(f"Created temporary extract directory in {temp_dir.name}")
+    if verbose:
+        print(f"Created temporary extract directory in {temp_dir.name}")
     return (temp_dir, temp_dir.name)
 
 
@@ -74,10 +75,10 @@ def closeTmpDir(tmpdir):
         return False
 
 
-def doExtract(rar_location, temp_dir):
+def doExtract(rar_location, temp_dir, verbose):
     try:
         patoolib.extract_archive(rar_location, outdir=temp_dir)
-        # print(os.listdir(temp_dir))
+        #print(os.listdir(temp_dir))
         return True
     except patoolib.util.PatoolError as err:
         printError("Couldn't extract rar archive...")
@@ -93,30 +94,32 @@ def writeFind(msg, filename):
     return True
 
 
-def SearchDir(dir, file_dir, search, outfile, count):
+def SearchDir(dir, search, outfile, count):
     for file in os.listdir(dir):
-        f = open(file_dir + file)
-        content = f.readlines()
-        for line in content:
-            if search not in line:
-                continue
-            find_msg = f"Found {search} in {file}:\n{line}"
-            printInfo(find_msg)
-            if outfile != False:
-                writeFind(find_msg, outfile)
-            count = count + 1
-        f.close()
-        os.remove(file_dir + file)
+        file_dir = os.path.join(dir, file)
+        if os.path.isdir(file_dir):
+            SearchDir(file_dir, search, outfile, count)
+        elif os.path.isfile(file_dir):    
+            f = open(file_dir)
+            content = f.readlines()
+            for line in content:
+                if search not in line:
+                    continue
+                find_msg = f"Found {search} in {file}:\n{line}"
+                printInfo(find_msg)
+                if outfile != False:
+                    writeFind(find_msg, outfile)
+                count = count + 1
+            f.close()
+            os.remove(file_dir)
+        else:
+            printError("An error occured: Didn't find valid file")
     return count
 
 
 def riterator(search_dir, tmp_dir, search_str, verbose, outputfile=False):
     find_count = 0
     file_count = 1
-    if os.name == "nt":
-        temp_file_dir = tmp_dir + "\\"
-    else:
-        temp_file_dir = tmp_dir + "/"
     for file in os.listdir(search_dir):
         if verbose:
             printInfo(f"Extracting rar archive {file_count}/{len(os.listdir(search_dir))}")
@@ -125,16 +128,15 @@ def riterator(search_dir, tmp_dir, search_str, verbose, outputfile=False):
         file_path = search_dir + file
         if not file.endswith(".rar"):
             continue
-        doExtract(file_path, tmp_dir)
-        new_find_count = SearchDir(tmp_dir, temp_file_dir,
-                              search_str, outputfile, find_count)
+        doExtract(file_path, tmp_dir, verbose)
+        new_find_count = SearchDir(tmp_dir,search_str, outputfile, find_count)
         find_count = new_find_count
     return find_count
 
 
 def main():
     (string, dir, outfile, verbose) = getArgs()
-    (tmpdir_class, temp_path) = createTmpDir()
+    (tmpdir_class, temp_path) = createTmpDir(verbose)
     iterated = riterator(dir, temp_path, string, verbose, outfile)
     print()
     count_msg = f"Found {iterated} occurences of {string}!"
