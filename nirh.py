@@ -74,6 +74,12 @@ def closeTmpDir(tmpdir):
         print("[!] Couldn't close temporary directory...")
         return False
 
+def writeFind(msg, filename):
+    file = open(filename, "a")
+    file.write(msg)
+    file.write("\n" * 2)
+    file.close()
+    return True
 
 def doExtract(rar_location, temp_dir, verbose):
     try:
@@ -85,14 +91,6 @@ def doExtract(rar_location, temp_dir, verbose):
         print(err)
         writeFind(err, "error.log")
         return False
-
-
-def writeFind(msg, filename):
-    file = open(filename, "a")
-    file.write(msg)
-    file.write("\n" * 2)
-    file.close()
-    return True
 
 
 def SearchDir(dir, search, outfile, count):
